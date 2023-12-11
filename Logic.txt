@@ -1,0 +1,17 @@
+I will represent the resistor combination as a graph where the nodes are junctions. 
+It is stored like {node : [(neighboour node, resitance between them),...]}
+For now I will not consider the case of zero resistance(eg a normal wire connected between the nodes) 
+as this will lead to zero/zero situations(hence every two nodes need a finite resistance between them)
+
+The nodes are represented by something with a hash value.
+The end nodes(which is connected to the battery) are given voltages V(an arbritrary known constant like 5) and 0.
+The current entering and leaving the circuit is an unknown i.
+
+So we have say n unknown nodes(whose voltage value is not known), 2 known nodes(V and 0) and the current i.
+So we have n + 1 unknowns. Hence we need atleast n + 1 equations. We can get n equations from the unknown nodes
+and 2 equations involving i from the known ones. Hence we have n + 2 equations which is SUS to say the least. There
+is some redundancy in the system. How to tackle this? My guess is that one of the O or the V node equation is redundant
+(I will need to think about this a bit). Hence, we have our n + 1 equations. We can somehow represent this as a matrix, find
+the inverse, and solve for i. Then using V = iR we get R = V/i and we are done.
+
+I will use C++ for this project.
