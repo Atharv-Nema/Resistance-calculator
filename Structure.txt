@@ -27,7 +27,7 @@ Member variables:
     
 Member function:
     Constructor();
-    getResistance();//Run only once
+    //Run only once
     getCurrent(some_way_to_identify_the_edge);
     getVoltage(node_identifier);
 

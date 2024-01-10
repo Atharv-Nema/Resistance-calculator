@@ -1,1 +1,1 @@
-g++ -I /eigen-3.4.0/eigen/ Main.cpp -o my_program
+g++ -I /eigen-3.4.0/eigen/ Main.cpp -o Trial
