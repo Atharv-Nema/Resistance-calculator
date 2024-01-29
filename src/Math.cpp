@@ -1,9 +1,13 @@
 #include <bits/stdc++.h>
-#include "eigen-3.4.0/Eigen/Dense"
+#include "../eigen-3.4.0/Eigen/Dense"
 using namespace std;
 
 class Circuit{
     private:
+        /*The node labeled 0 is connected to the positive terminal.(voltage)
+        The node labeled graph.size() - 1 is connected to the negative terminal(0)
+        So we have n unknown nodes(graph.size() - 2) and 2 known nodes
+        we have n + 1 equations(we wont use the equation from the 0 node as it is redundant)*/
         vector<vector<pair<double, int>> > circuit_graph;
         vector<vector<pair<double, int>> > current_of_edges;
         vector<double> node_values;
@@ -18,10 +22,6 @@ class Circuit{
     
     public:
         Circuit(vector<vector<pair<double, int>> > graph);
-        //The node labeled 0 is connected to the positive terminal.(voltage)
-        //The node labeled graph.size() - 1 is connected to the negative terminal(0)
-        //So we have n unknown nodes(graph.size() - 2) and 2 known nodes
-        //we have n + 1 equations(we wont use the equation from the 0 node as it is redundant)
         Circuit(vector<vector<pair<double, int>> > graph, double volt);
         double getResistance();
         double getTotalCurrent();
@@ -53,24 +53,27 @@ double Circuit :: getTotalCurrent(){
 }
 double Circuit :: getCurrent(int node_1, int node_2){//By default node_1 < node_2, else reorder
     if(node_1 < 0 || node_1 >= circuit_graph.size() || node_2 < 0 || node_2 >= circuit_graph.size()){
-        throw new range_error("Array out of bounds");
+        throw range_error("Array out of bounds");
     }
     if(!(connected_matrix[node_1][node_2])){
-        throw "Nodes are not connected";
+        throw invalid_argument("Nodes are not connected");
     }
     else{
         if(isnan(current_matrix[node_1][node_2])){
-            throw new domain_error("Undefined current");
+            /*In cases where a finite current would flow if there was a wire with 0
+            resistance connected. However, there are more than 1 wires of 0 resistance connected between the nodes.*/
+            throw domain_error("Undefined current");
         }
         else{
             return current_matrix[node_1][node_2];
         }
     }
 }
+//Go through this code in context with initialize
 void Circuit :: coefficient_adder(int node,vector<int> &equivalent,Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> &M,
 Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> &C)
 {
-    //This function just adds the non zero resistance coefficients
+    //This function just adds the non zero resistance coefficients for the equation equivalent[node] coming from node
     for(int i = 0; i < circuit_graph[node].size(); i++){
         double R = circuit_graph[node][i].first;
         int neighbour = circuit_graph[node][i].second;
@@ -78,7 +81,7 @@ Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> &C)
             if(R != 0){
                 C(equivalent[node],0) += -(voltage/R);//(voltage - neighbour)/R is the current
             }
-            if(neighbour != circuit_graph.size() - 1){//If it is size - 1 then neighbour value is 0.
+            if(neighbour != circuit_graph.size() - 1){//If it is size -1 then neighbour value is 0.
                 if(R != 0){
                     M(equivalent[node],neighbour) += (-1.0/R);//I am doing += just in case muliple neighbours with the same node val
                 }
@@ -102,22 +105,26 @@ Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> &C)
     }
 }
 void Circuit :: initialize(){
-    //I will make a circuit_graph.size() - 1 = n; n x n size matrix.(Say M)
-    //The first column corresponds to i
-    //The next n - 1 positions will correspond to the node variables
+    /*I will make a circuit_graph.size() - 1 = n; n x n size matrix.(Say M)
+    Columns correspond to the variables and the rows correspond to equations
+    The first column corresponds to i
+    The next n - 1 positions will correspond to the node variables
 
-    //I will also make a n x 1 column matrix (C) that represents the constants.
+    I will also make a n x 1 column matrix (C) that represents the constants.
 
-    //Hence (M-1)C[i] where 0 <= i < n - 1 represents the voltage at the ith node
-    //(M-1)[n - 1] represents the total current in the circuit.
+    Hence (M-1)C[i] where 0 <= i < n - 1 represents the voltage at the ith node
+    (M-1)[n - 1] represents the total current in the circuit.*/
     if(node_values.size() > 0){
-        throw "Exception, you have already initialized the object";
+        throw logic_error("Exception, you have already initialized the object");
     }
-    //Handling zero resistance
-    //I will make a new vector that stores the node value which has the same voltage value as the node(connected with
-    //a zero resistance)
-    //I will go through the circuit graph. Say we are at node a and we have found a is connected to b with a zero resistance
-    //If a > b then equivalent[a] = equivalent[b]. Else equivalent[a] = a
+    /*HANDLING ZERO RESISTANCES
+    My model allows for wires(zero resistances) to be connected
+    I will make a new vector that stores the node value which have the same voltage value as the node(i.e.
+    they are connected with a zero resistance)
+    I will go through the circuit graph. Say we are at node a and we have found that a is connected to b with a zero resistance
+    If a > b then equivalent[a] = equivalent[b]. Else equivalent[a] = a. Note that if a is not connected to any such b then 
+    equivalent[a] = a
+    This means that equivalent[i] = min(node such that node is reachable to i using only zero resistance paths)*/
     vector<int> equivalent;
     vector<bool> check_required;//Stores if there is a need to search the rest of the array for equivalents.
     for(int i = 0; i < circuit_graph.size(); i++){
@@ -141,26 +148,27 @@ void Circuit :: initialize(){
             else{
                 check_required.push_back(true);//Need a check to add the extra coefficients.
             }
-            equivalent.push_back(i);
+            equivalent.push_back(i);//Irrespective, equivalent[i] = i
         }
     }
-    //No problem with check_required and equivalent
+    //If last node is equivalent to node 0, then the circuit is short circuited leading to infinite current
     if(equivalent[equivalent.size() - 1] == 0){
-        throw "Infinite current exception";
+        throw invalid_argument("Infinite current exception");
     }
-    //equivalent has been set up
-    //Now I will go through circuit graph. 
-    //When I encounter a node, if node == equivalent[node], add the currents for the other nodes which are not connected
-    //with 0 resistance. Then go through the rest of equivalent to search for equivalence(if check is true).(If check is
-    //false you are done). If node != equivalent[node] node - equivalent[node] is the equation for the node.
-    //I think I should write a helper function that does the adding of coefficients as there is repetition of code
+    /*equivalent has been set up
+    Now I will go through circuit graph. 
+    When I encounter a node, if node == equivalent[node], add the currents for the other nodes which are not connected
+    with 0 resistance. Then go through the rest of equivalent to search for equivalence(if check is true).(If check is
+    false you are done). If node != equivalent[node], node - equivalent[node] is the equation for the node(as both have the
+    same voltage).
+    Helper function coefficient_adder  does the adding of coefficients as there was a huge repetition of code(read it now)*/
     
     int n = circuit_graph.size() - 1;
     Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> M(n, n);
-    M.setZero();
+    M.setZero();//Coefficient matrix
     Eigen :: Matrix<double, Eigen :: Dynamic, Eigen :: Dynamic> C(n, 1);
-    C.setZero();
-    M(0,0) += -1.0;//As the equation involving the first node has -i term
+    C.setZero();//Constant matrix
+    M(0,0) += -1.0;//As the equation involving the first node has -i term()
     
     //I will now populate the matrix
     for(int node = 0; node < circuit_graph.size() - 1; node++){
@@ -199,15 +207,14 @@ void Circuit :: initialize(){
     }
     node_values.push_back(0);
     
-    //Current graph initialization
-    //Algorithm: I need to take care about the cases of 0 resistances. Hence here is an algo I propose.
-    //Start from node 0, do situation for all nodes. Give counter of connections with unknown current to each node. 
-    //Do one pass. After pass u do to each node where 1 unknown exists and give it current. This will reduce other higher
-    //nodes current too.
-    //Hence you repeat until you are done.
+    /*Current graph initialization
+    Algorithm: I need to take care about the cases of 0 resistances. Hence here is an algo I propose.
+    Start from node 0, do situation for all nodes. Give counter of connections with unknown current to each node. 
+    Do one pass. After pass u do to each node where 1 unknown exists and give it current. This will reduce other higher
+    nodes current too.
+    Hence you repeat until you are done.*/
 
-    //Initialize the 2d vector(NaN means that the nodes are not connected, -inf means that the current between the nodes is
-    //undefined)
+    //Initialize the 2d vector(nan means either that the nodes are not connected or the current in undefined)
 
     for(int i = 0; i < circuit_graph.size(); i++){
         vector<double> temp1(circuit_graph.size(), NAN);
@@ -216,7 +223,6 @@ void Circuit :: initialize(){
         connected_matrix.push_back(temp2);
     }
     //Now I want to make a vector that keeps track of the number of zero resistances in connection to a particular node
-    //I will also populate all the connections with zero reistance with -2(by default it is undefined)
     //All the non zero resistances are populated with the current
     vector<int> unknown_ct;
     for(int i = 0; i < circuit_graph.size(); i++){
@@ -226,7 +232,7 @@ void Circuit :: initialize(){
             connected_matrix[i][ele.second] = true;
             if(ele.first == 0){
                 ct++;
-                current_matrix[i][ele.second] = -2;
+                //current_matrix[i][ele.second] = -2; //I dont think this is needed
             }
             else{
                 current_matrix[i][ele.second] = (node_values[i] - node_values[ele.second])/(ele.first);//Current outwards is positive
@@ -245,7 +251,7 @@ void Circuit :: initialize(){
                 for(int j = 0; j < circuit_graph[i].size(); j++){
                     auto ele = circuit_graph[i][j];
                     double current = current_matrix[i][ele.second];
-                    if(current == -2){
+                    if(isnan(current)){
                         unknown_neighbour = ele.second;
                     }
                     else{
@@ -253,7 +259,7 @@ void Circuit :: initialize(){
                     }
                 }
                 if(unknown_neighbour < 0){
-                    throw "internal state error problem in current matrix";
+                    throw logic_error("internal state error problem in current matrix");
                 }
                 else{
                     current_matrix[i][unknown_neighbour] = -outward_current;//Kirchoffs law
@@ -264,5 +270,14 @@ void Circuit :: initialize(){
             }
         }
     }
-    //Voila! we are done
+    //Voila! we are done with the core bit. Now just a bit of floating point error cleanup is required
+    for(int i = 0; i < circuit_graph.size(); i++){
+        for(int j = 0; j < circuit_graph[i].size(); j++){
+            auto ele = circuit_graph[i][j];
+            if(current_matrix[i][ele.second] < 1e-8 && current_matrix[i][ele.second] > -1e-8){
+                current_matrix[i][ele.second] = 0.0;
+            }
+        }
+    }
+    //And we are done!!!!
 }

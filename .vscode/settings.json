@@ -6,7 +6,9 @@
         "memory": "cpp",
         "functional": "cpp",
         "iostream": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "vector": "cpp",
+        "stdexcept": "cpp"
     },
     "cmake.configureOnOpen": true
 }

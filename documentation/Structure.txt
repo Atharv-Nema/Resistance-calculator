@@ -11,9 +11,6 @@ Basic Program flow:
 3. Now the graphical interface takes more inputs from the user and queries the object returned effectively.
 
 The math part:
-(Should I make a node class?) I mean I just need an identifier. But I feel like I am missing out on proper design.
-Why? Because I havent come up with a concrete way to get the wires and nodes.
-I will figure it out.
 
 It will take in the two node which are represented as a vector.(index is the same as)
 

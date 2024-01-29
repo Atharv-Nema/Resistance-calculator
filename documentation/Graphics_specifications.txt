@@ -1,0 +1,19 @@
+Classes: 
+Wire
+Node
+Battery
+Reistances
+
+Battery: Has two nodes attached to the end and a voltage. We can change the voltage by right clicking the text box at the top
+
+Nodes: Has a voltage probably, the list of neighbouring nodes,wire pair(or any way you want to implement it). We select the node
+by right clicking it. On selecting it, we can spawn a wire/node pair and drag it to the point we want. Then, by left clicking, 
+to an empty space, or left clicking onto an existing node, we attach a wire. Probably to spawn a resistor we might press R after the
+right click.(Note that when connected to a battery, the whole node, and its connected graph should move with it)
+
+Wire: Two states temporary and permanent. A temporary wire is dull grey and does not have a corresponding node. It becomes permanent
+when a left click occurs after selecting a node. Also try adding the feature that shift pressing leads to a straight line.
+
+Resistor: When the user right clicks after selecting a node, we spawn a resistor. This has a resistance(modifyable in the same way
+as the battery) and is appropriately tilted(look out for the text becoming upside down(do something with mod 180 ig)). Ig it inherits
+wire.

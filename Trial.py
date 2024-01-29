@@ -1,33 +1,62 @@
-import numpy as np
-import math
-def pairs(N):
-    vec = np.arange(N)
-    np.random.shuffle(vec)
-    return (vec[:N//2], vec[N//2:])
-def kinetic_exchange(v,w):
-    R = np.random.uniform(size = len(v))
-    return ((v + w) * R, (v + w) * (1 - R))
-def sim(people,T):#O(T*n)
-    for i in range(T):
-        print(i)
-        pair = pairs(len(people))#O(n) I assume
-        x = kinetic_exchange(people[pair[0]],people[pair[1]])#O(n)
-        people[pair[0]] = x[0]
-        people[pair[1]] = x[1]
-        '''ind = np.append(pair[0],pair[1])#O(n)
-        people = np.append(x[0],x[1])[ind]#O(n).'''
-    return people
-def stable_sim(people):
-    while(True):
-        pair = pairs(len(people))
-        x = kinetic_exchange(people[pair[0]],people[pair[1]])
-        ind = np.append(pair[0],pair[1])
-        temp = np.append(x[0],x[1])[ind]
-        if(math.fabs((np.var(people) - np.var(temp))/np.var(temp)) < 0.1):#The stability condition
-            return temp
-        people = np.append(x[0],x[1])[ind]
-people = np.ones(50000)
-print("here?")
-people = stable_sim(people)
-new_people = sim(people,300000)
-#answer = mobility(people,new_people)
+import pygame
+import sys
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+WIRES = []
+
+# Colors
+BLACK = (0, 0, 0)
+TRANSPARENT = (0, 0, 0, 0)
+
+# Create screen
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Wire Drawing")
+
+# Create clock object to control the frame rate
+clock = pygame.time.Clock()
+
+def draw_wire(start_pos, end_pos):
+    pygame.draw.line(screen, BLACK, start_pos, end_pos, 2)
+
+def main():
+    global WIRES
+
+    drawing_wire = False
+    current_wire = []
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                drawing_wire = True
+                current_wire = [event.pos]
+            elif event.type == pygame.MOUSEMOTION:
+                if drawing_wire:
+                    current_wire.append(event.pos)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                drawing_wire = False
+                WIRES.append(list(current_wire))
+
+        screen.fill(TRANSPARENT)
+
+        # Draw existing wires
+        for wire in WIRES:
+            if len(wire) > 1:
+                for i in range(len(wire) - 1):
+                    draw_wire(wire[i], wire[i + 1])
+
+        # Draw current wire being drawn
+        if drawing_wire and len(current_wire) > 1:
+            draw_wire(current_wire[-2], current_wire[-1])
+
+        pygame.display.flip()
+        clock.tick(60)
+
+if __name__ == "__main__":
+    main()
