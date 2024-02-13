@@ -1,5 +1,6 @@
 import pygame
 import sys
+import math
 
 class Wire:
     def __init__(self, start_pos, end_pos, isTemporary):
@@ -18,12 +19,13 @@ class Wire:
     def change_end_point(self,new_pos):
         self.end_pos = new_pos
 
-    def translate(self, displacement):
+    def handle_event(self, event, displacement):
         self.start_pos = (self.start_pos[0] + displacement[0], self.start_pos[1] + displacement[1])
         self.end_pos = (self.end_pos[0] + displacement[0], self.end_pos[1] + displacement[1])
 
     def draw(self, surface):
         pygame.draw.line(surface, self.color, self.start_pos, self.end_pos, 8)
+
 
 
 class Node:
@@ -62,7 +64,7 @@ class Node:
             pygame.draw.circle(surface, (0, 255, 0), (self.x, self.y), self.radius + 2, 2)
     
  
-    def handle_event(self, event,displacement):
+    def handle_event(self, event, displacement):
         if self.event_handled == True:
             return None
         self.event_handled = True
@@ -123,11 +125,71 @@ class Node:
         
         for wire,node in self.wires:
             if node is None:
-                wire.translate(displacement)
+                wire.handle_event(event, displacement)
             elif node.number > self.number:
-                wire.translate(displacement)
+                wire.handle_event(event, displacement)
                 node.handle_event(event, displacement)
-            
+
+class Resistor(Wire):#A wrapper class
+    def __init__(self, wire):
+        self.Wire = wire
+        self.resistance = 5 # Default resistance
+
+        self.editing = False
+        self.image = pygame.image.load('rsc/resistor.png').convert_alpha()
+        self.resistance_rect = pygame.Rect(0, 0, 0, 0)  # Initialize resistance_rect
+        self.text_rect = None#Default scene
+    def handle_event(self, event, displacement):
+        self.Wire.handle_event(None, displacement)#Does the translating buisness
+
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 3: #Right mouse button means editing
+                if self.text_rect != None and self.text_rect.collidepoint(event.pos):
+                    self.editing = not self.editing
+    
+        if event.type == pygame.KEYDOWN and self.editing:
+            if event.key == pygame.K_RETURN:#An enter is a perfectly valid way of ending the editing cycle
+                self.editing = False
+            elif event.key == pygame.K_BACKSPACE:
+                self.resistance = self.resistance // 10
+            elif pygame.K_0 <= event.key <= pygame.K_9:
+                self.resistance = self.resistance * 10 + int(pygame.key.name(event.key))
+
+    def change_end_point(self, new_pos):
+        self.Wire.change_end_point(new_pos)
+    
+    def makePermanent(self):
+        self.Wire.makePermanent()
+    
+    def draw(self, surface):
+        #scaling
+        dist = math.dist(self.Wire.start_pos, self.Wire.end_pos)
+        scale_factor = dist / self.image.get_width()
+        scaled_image = pygame.transform.scale(self.image, ((self.image.get_width() * scale_factor), (self.image.get_height() * 0.5)))
+        
+        #rotating
+        angle = math.pi / 2
+        if (self.Wire.end_pos[0] - self.Wire.start_pos[0]) != 0:
+            angle = math.atan((self.Wire.end_pos[1] - self.Wire.start_pos[1])/ (self.Wire.end_pos[0] - self.Wire.start_pos[0]))
+        angle = -math.degrees(angle)
+        print(angle)
+        final_image = pygame.transform.rotate(scaled_image, angle)
+        self.rect = final_image.get_rect()
+        self.rect.center = (self.Wire.start_pos[0] + (self.Wire.end_pos[0] - self.Wire.start_pos[0]) // 2, self.Wire.start_pos[1] + (self.Wire.end_pos[1] - self.Wire.start_pos[1]) // 2)
+        surface.blit(final_image, self.rect)
+
+        #Font
+        font = pygame.font.Font(None, 60)
+        resistance_text = font.render(f"{self.resistance} R", True, (0, 0, 0))
+        angle = math.radians(angle)
+        self.text_rect = resistance_text.get_rect(center=(self.rect.centerx - 50 * math.sin(angle), self.rect.centery - 50 * math.cos(angle)))
+        print(self.Wire.end_pos,self.Wire.start_pos,self.text_rect.center)
+        surface.blit(resistance_text, self.text_rect)
+
+        #Editing the resistance box
+        if self.editing:
+            pygame.draw.rect(surface, (255, 255, 0), self.text_rect, 2)
     
 class Battery:
     def __init__(self, x, y, image_path):

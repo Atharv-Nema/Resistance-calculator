@@ -1,3 +1,10 @@
-Combine the translate and the handle event methods
-Make the resistance class
+Make the resistance class:
+    I want a text box above the resistance.
+    You can turn a wire into a resistance by clicking on a wire, it will turn yellow, then you press R.
+    If you click anywhere else, or any other key then it gets unclicked.
+    The design of the resistor:
+
+    There should be a text box on top of the resistor(note: it is important for the textbox to be ABOVE not below the resistor(you need to figure out how))
+
+    The text box should be tilted at the same angle as the resistor.
 Figure out deletion of wires and nodes and resistances.
