@@ -8,6 +8,7 @@ class Wire:
         self.end_pos = end_pos
         self.color = (100,100,100) if isTemporary else (0,0,0)
         self.isTemporary = isTemporary
+        self.selected = False
 
     def isTemporary(self):
         return self.isTemporary
@@ -20,11 +21,52 @@ class Wire:
         self.end_pos = new_pos
 
     def handle_event(self, event, displacement):
+        #Displacement
         self.start_pos = (self.start_pos[0] + displacement[0], self.start_pos[1] + displacement[1])
         self.end_pos = (self.end_pos[0] + displacement[0], self.end_pos[1] + displacement[1])
 
+        #Event handling
+        mouse_pos = pygame.mouse.get_pos()
+        THRESHOLD = 5
+        EPS = 0.05
+        length = ((self.end_pos[1] - self.start_pos[1]) ** 2 + (self.end_pos[0] - self.start_pos[0]) ** 2) ** 0.5
+        if event != None and event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            #Checking if click is on the line
+            if(length == 0):
+                distance_to_line = THRESHOLD + 1
+            else:
+                new_end_pos = (self.end_pos[0] + EPS * (self.start_pos[0] - self.end_pos[0]), self.end_pos[1] + EPS * (self.start_pos[1] - self.end_pos[1]))
+                new_start_pos = (self.start_pos[0] + EPS * (self.end_pos[0] - self.start_pos[0]), self.start_pos[1] + EPS * (self.end_pos[1] - self.start_pos[1]))
+                d1_dot_line =  (mouse_pos[0] - new_start_pos[0]) * (new_end_pos[0] - new_start_pos[0]) + (mouse_pos[1] - new_start_pos[1]) * (new_end_pos[1] - new_start_pos[1])
+                d2_dot_line = (mouse_pos[0] - new_end_pos[0]) * (new_start_pos[0] - new_end_pos[0]) + (mouse_pos[1] - new_end_pos[1]) * (new_start_pos[1] - new_end_pos[1])
+                if d1_dot_line < 0 or d2_dot_line < 0:
+                    distance_to_line = THRESHOLD + 2
+                else:
+                    #Calculate the distance normally
+                    distance_to_line = abs(
+                        (new_end_pos[1] - new_start_pos[1]) * pygame.mouse.get_pos()[0]
+                        - (new_end_pos[0] - new_start_pos[0]) * pygame.mouse.get_pos()[1]
+                        + new_end_pos[0] * new_start_pos[1]
+                        - new_end_pos[1] * new_start_pos[0]
+                        ) / length
+            
+            print(distance_to_line)
+            if distance_to_line < THRESHOLD:  # Adjust the threshold as needed
+                self.selected = not self.selected
+            else:
+                self.selected = False
+        #Sending message to parent
+        if self.selected:
+            if event != None and self.selected and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.selected = False
+                    return True
+        return False
+    
     def draw(self, surface):
         pygame.draw.line(surface, self.color, self.start_pos, self.end_pos, 8)
+        if self.selected:
+            pygame.draw.line(surface, (255, 255, 0), self.start_pos, self.end_pos, 16)
 
 
 
@@ -123,12 +165,15 @@ class Node:
                 Node.selected_node = None
                 Node.selected_wire = None
         
-        for wire,node in self.wires:
+        for i in range(len(self.wires)):
+            wire,node = self.wires[i]
             if node is None:
                 wire.handle_event(event, displacement)
             elif node.number > self.number:
-                wire.handle_event(event, displacement)
                 node.handle_event(event, displacement)
+                if wire.handle_event(event, displacement):
+                    #Convert to a resistor
+                    self.wires[i] = Resistor(wire), node
 
 class Resistor(Wire):#A wrapper class
     def __init__(self, wire):
