@@ -1,5 +1,8 @@
-output: src/Math.cpp src/Trial.cpp
-	g++ src/Trial.cpp -I /eigen-3.4.0/eigen/ -o build/output
-	./build/output
+Interface.out: src/Interface.cpp src/Math.cpp
+	g++ src/Interface.cpp -o Interface.out
+
+run: Interface.out
+	python3 src/Main.py
+
 clean:
-	rm build/*
+	rm Interface.out

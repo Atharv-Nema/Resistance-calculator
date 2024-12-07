@@ -155,16 +155,18 @@ void Circuit :: fillEquivalent(vector<int> &equivalent, vector<bool> &checkRequi
         checkRequired.push_back(false);
     }
 
-    // Now, I will perform a simple dfs originating from 
+    // Now, I will perform a simple dfs originating from the two end points
     vector<int> dfsStack;
     vector<bool> visited(N, false);
     dfsStack.push_back(0);
-    dfsStack.push_back(N - 1);
     visited[0] = true;
-    visited[N - 1] = true;
-    // First perform a simple dfs from these end points
     performEquivalentDFS(equivalent, checkRequired, dfsStack, visited);
-
+    if(visited[N - 1]){
+        throw invalid_argument("Infinite current exception");
+    }
+    dfsStack.push_back(N - 1);
+    visited[N - 1] = true;
+    performEquivalentDFS(equivalent, checkRequired, dfsStack, visited);
 
     //Now perform a simple dfs from all the other nodes
     for(int i = 1; i < N - 1; i++){
@@ -204,7 +206,7 @@ void Circuit :: initialize(){
     
     fillEquivalent(equivalent, checkRequired);
     //If last node is equivalent to node 0, then the circuit is short circuited leading to infinite current
-    if(equivalent[equivalent.size() - 1] == 0){
+    if(equivalent[equivalent.size() - 1] == equivalent[0]){
         throw invalid_argument("Infinite current exception");
     }
 

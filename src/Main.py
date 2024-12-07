@@ -139,9 +139,10 @@ class Wire:
             arrow_point2 = (midpoint[0] - unit_dx * arrow_length - unit_dy * arrow_length,
                             midpoint[1] - unit_dy * arrow_length + unit_dx * arrow_length)
 
-            # Draw the arrowhead at the midpoint
-            pygame.draw.line(surface, arrow_color, midpoint, arrow_point1, arrow_width)
-            pygame.draw.line(surface, arrow_color, midpoint, arrow_point2, arrow_width)
+            if self.current != 0:
+                # Draw the arrowhead at the midpoint
+                pygame.draw.line(surface, arrow_color, midpoint, arrow_point1, arrow_width)
+                pygame.draw.line(surface, arrow_color, midpoint, arrow_point2, arrow_width)
 
         # Draw the current value below the arrow
         font = pygame.font.Font(None, 24)
@@ -562,10 +563,13 @@ class Battery:
             [f"./Interface.out"],
             input = byte_form_data,
             capture_output = True,
-            shell = True
+            shell = True,
         )
-        #TODO: FIX UNDEFINED CURRENT CASE
         return result.stdout.decode()
+        # except subprocess.CalledProcessError as e:
+        #     print(f"Command failed with exit code {e.returncode}")
+        #     print(f"Error message: {e.stderr}")
+            
     
     def parse_data(self, received_data):
         data_lines = received_data.split('\n')
