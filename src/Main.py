@@ -93,7 +93,6 @@ class Wire:
     def remove_build_data(self):
         self.current = None
 
-    
     def is_transformation_request(self, event):
         '''Returns whether the event is intended to change the wire to a resistor'''
         if self.current is None and self.selected:
@@ -400,17 +399,9 @@ class Resistor(Wire):#A wrapper class
     def ingest_build_data(self, build_data):
         self.wire.ingest_build_data(build_data)
 
-    def remove_build_data(self, build_data):
-        self.wire.remove_build_data(build_data)
-
     def remove_build_data(self):
-        if not self.event_handled:
-            self.voltage = None
-            self.event_handled == True
-            for wire, neighbour in self.wires:
-                assert neighbour is not None
-                wire.remove_build_data()
-                neighbour.remove_build_data()
+        self.wire.remove_build_data()
+
     
     def draw(self, surface):
         #scaling
@@ -652,16 +643,14 @@ class Battery:
         self.total_resistance = None
         # Firstly, I will reset the nodes event_handled
         self.nodes[0].reset_event_handled()
-        assert self.nodes[1].event_handled == False
+        self.nodes[1].reset_event_handled()
 
-        self.nodes[0].remove_build_data(self)
-        assert self.nodes[1].event_handled == True
+        self.nodes[0].remove_build_data()
+        self.nodes[1].reset_event_handled()
 
         # Resetting it again(may not be required)
         self.nodes[0].reset_event_handled()
-        assert self.nodes[0].event_handled == False
-
-
+        self.nodes[1].reset_event_handled()
 
 
 class Button:
@@ -682,8 +671,10 @@ battery = Battery(100, 100, 'rsc/battery.png')  # x, y, image_path
 
 # Creating the buttons
 BUTTON_DIMENSIONS = (200, 200)
+modify_button = Button(1400, 650, 'rsc/modify_button.png', BUTTON_DIMENSIONS)
 reset_button = Button(1400, 800, 'rsc/reset_button.png', BUTTON_DIMENSIONS)
 build_button = Button(1410, 950, 'rsc/build_button.png', BUTTON_DIMENSIONS)
+
 
 # Initialize Pygame
 pygame.init()
@@ -715,11 +706,17 @@ while running:
     if build_button.is_clicked(event):
         battery.perform_build()
 
+    has_built = battery.total_resistance is not None
+    if has_built and modify_button.is_clicked(event):
+        battery.remove_build_data()
+
     # Draw on the screen
     screen.fill((255, 255, 255))  # Fill screen with white color
     battery.draw(screen)
     reset_button.draw(screen)
     build_button.draw(screen)
+    if has_built:
+        modify_button.draw(screen)
 
     # Update display
     pygame.display.flip()
