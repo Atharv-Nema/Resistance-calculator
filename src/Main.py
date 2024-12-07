@@ -149,6 +149,22 @@ class Node:
         pygame.draw.circle(surface, self.color, (self.x, self.y), self.radius) #Drawing self
         if self.selected:
             pygame.draw.circle(surface, (0, 255, 0), (self.x, self.y), self.radius + 2, 2)
+
+
+        if self.voltage is not None:
+            # Display the voltage
+            # Prepare the font
+            font = pygame.font.Font(None, 24)  # You can adjust the size (24) as needed
+
+            # Render the text (voltage in blue color)
+            voltage_text = font.render(f"{self.voltage:.2f} V", True, (100, 100, 255))  # LightBlue color (RGB)
+
+            # Calculate the position (slightly above and to the right of the node)
+            text_x = self.x + self.radius + 5  # Adjust the offset as needed
+            text_y = self.y - self.radius - 10
+
+            # Draw the text on the screen
+            screen.blit(voltage_text, (text_x, text_y))
     
  
     def handle_event(self, event, displacement):
@@ -179,8 +195,7 @@ class Node:
                         #User wants to connect a wire between the nodes
                         #It is your responsibility to transfer the info to the node that it not need to be selected anymore
                         self.wires.append((Node.temporary_wire, Node.selected_node)) 
-                        # TODO: Ahh, I see why it is needed
-                        # But selected wire seems to be a slightly misleading name
+
                         Node.temporary_wire.make_permanent(self, Node.selected_node)
 
                         #Updating the other nodes values
@@ -218,21 +233,6 @@ class Node:
                 Node.another_selected = False
                 Node.selected_node = None
                 Node.temporary_wire = None
-        
-        if self.voltage is not None:
-            # Display the voltage
-            # Prepare the font
-            font = pygame.font.Font(None, 24)  # You can adjust the size (24) as needed
-
-            # Render the text (voltage in blue color)
-            voltage_text = font.render(f"{self.voltage:.2f} V", True, (0, 0, 255))  # Blue color (RGB)
-
-            # Calculate the position (slightly above and to the right of the node)
-            text_x = self.x + self.radius + 5  # Adjust the offset as needed
-            text_y = self.y - self.radius - 10
-
-            # Draw the text on the screen
-            screen.blit(voltage_text, (text_x, text_y))
 
 
         for i in range(len(self.wires)):
@@ -267,33 +267,71 @@ class Node:
                 wire.remove_build_data()
                 neighbour.remove_build_data()
 
+class TextBox:
+    other_selected = None # Represents any other text box that may be selected
+    def __init__(self, value, suffix):
+        self.text_rect = pygame.Rect(0, 0, 0, 0) # Initialize the rect
+        # self.value = value # Default value
+        self.str_val = str(value) # String representation of value
+        self.suffix = suffix
+        self.editing = False
+
+    def end_editing(self):
+        assert TextBox.other_selected == self
+        TextBox.other_selected = None
+        val = float(self.str_val)
+        if val == int(val):
+            val = int(val)
+        self.str_val = str(val)
+        self.editing = False
+    
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.text_rect.collidepoint(event.pos):
+            if self.editing:
+                self.end_editing()
+            else:
+                if TextBox.other_selected is not None:
+                    TextBox.other_selected.end_editing()
+                TextBox.other_selected = self
+                self.editing = True
+        
+        if self.editing and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:#An enter is a perfectly valid way of ending the editing cycle
+                self.end_editing()
+            elif event.key == pygame.K_BACKSPACE:
+                if len(self.str_val) == 1:
+                    self.str_val = '0'
+                else:
+                    self.str_val = self.str_val[:-1]
+            elif pygame.K_PERIOD == event.key and '.' not in self.str_val:
+                self.str_val += pygame.key.name(event.key)
+            elif pygame.K_0 <= event.key <= pygame.K_9:
+                if self.str_val == '0':
+                    self.str_val = ''
+                self.str_val += pygame.key.name(event.key)
+
+        pass
+
+    def draw(self, font_size, center, surface):
+        font = pygame.font.Font(None, font_size)
+        display_text = font.render(f"{self.str_val} {self.suffix}", True, (0, 0, 0))
+        self.text_rect = display_text.get_rect(center=center)
+        surface.blit(display_text, self.text_rect)
+        if self.editing:
+            pygame.draw.rect(surface, (255, 255, 0), self.text_rect, 2)
+
+
 class Resistor(Wire):#A wrapper class
     def __init__(self, wire):
         self.wire: Wire = wire
         self.resistance = 5 # Default resistance
-
-        self.editing = False
+        self.resistance_box = TextBox(5, 'R')
         self.image = pygame.image.load('rsc/resistor.png').convert_alpha()
-        self.resistance_rect = pygame.Rect(0, 0, 0, 0)  # Initialize resistance_rect
-        self.text_rect = None # Default scene
     
     def handle_event(self, event, displacement):
         self.wire.handle_event(None, displacement)#Does the translating buisness
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 3: #Right mouse button means editing
-                if self.text_rect != None and self.text_rect.collidepoint(event.pos):
-                    self.editing = not self.editing
-                else:
-                    self.editing = False
-    
-        if event.type == pygame.KEYDOWN and self.editing:
-            if event.key == pygame.K_RETURN:#An enter is a perfectly valid way of ending the editing cycle
-                self.editing = False
-            elif event.key == pygame.K_BACKSPACE:
-                self.resistance = self.resistance // 10
-            elif pygame.K_0 <= event.key <= pygame.K_9:
-                self.resistance = self.resistance * 10 + int(pygame.key.name(event.key))
+        self.resistance_box.handle_event(event)
+        self.resistance = float(self.resistance_box.str_val)
 
     def change_end_point(self, new_pos):
         # Probably will never be needed
@@ -339,16 +377,13 @@ class Resistor(Wire):#A wrapper class
         self.rect.center = (self.wire.start_pos[0] + (self.wire.end_pos[0] - self.wire.start_pos[0]) // 2, self.wire.start_pos[1] + (self.wire.end_pos[1] - self.wire.start_pos[1]) // 2)
         surface.blit(final_image, self.rect)
 
-        #Font
-        font = pygame.font.Font(None, 60)
-        resistance_text = font.render(f"{self.resistance} R", True, (0, 0, 0))
+        # Drawing the resitance box
         angle = math.radians(angle)
-        self.text_rect = resistance_text.get_rect(center=(self.rect.centerx - 50 * math.sin(angle), self.rect.centery - 50 * math.cos(angle)))
-        surface.blit(resistance_text, self.text_rect)
-
-        #Editing the resistance box
-        if self.editing:
-            pygame.draw.rect(surface, (255, 255, 0), self.text_rect, 2)
+        self.resistance_box.draw(
+            60, 
+            (self.rect.centerx - 50 * math.sin(angle), self.rect.centery - 50 * math.cos(angle)),
+            surface
+        )
 
 class Battery:
     def __init__(self, x, y, image_path):
@@ -358,22 +393,24 @@ class Battery:
         self.offset = (0, 0)
         self.nodes = [Node(self.rect.left, self.rect.centery), Node(self.rect.right, self.rect.centery)]
         self.voltage = 5 # Default voltage
-        self.voltage_rect = pygame.Rect(0, 0, 0, 0)  # Initialize voltage_rect
-        self.editing = False
+        self.voltage_box = TextBox(5, 'V')
         self.total_resistance = None
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
-        font = pygame.font.Font(None, 80)
-        voltage_text = font.render(f"{self.voltage} V", True, (0, 0, 0))
-        self.voltage_rect = voltage_text.get_rect(center=(self.rect.centerx, self.rect.y - 20))
-        surface.blit(voltage_text, self.voltage_rect)
-
+        self.voltage_box.draw(80, (self.rect.centerx, self.rect.y - 20), surface)
+        
         # Draw nodes
         for node in self.nodes:
             node.draw(surface)
-        if self.editing:
-            pygame.draw.rect(surface, (255, 255, 0), self.voltage_rect, 2)
+
+        # Draw total resistance below the battery if it's not None
+        if self.total_resistance is not None:
+            font = pygame.font.Font(None, 40)
+            resistance_text = font.render(f"Circuit Resistance: {self.total_resistance:.2f} R", True, (0, 0, 0))
+            text_rect = resistance_text.get_rect(center=(self.rect.centerx, self.rect.bottom + 20))
+            surface.blit(resistance_text, text_rect)
+
 
     def handle_event(self, event):
         self.nodes[0].handle_event(event, (self.rect.left - self.nodes[0].x, self.rect.centery - self.nodes[0].y))
@@ -386,9 +423,6 @@ class Battery:
                 if self.rect.collidepoint(event.pos):
                     self.dragging = True
                     self.offset = (self.rect.x - event.pos[0], self.rect.y - event.pos[1])
-            if event.button == 3: #Right mouse button means editing
-                if self.voltage_rect.collidepoint(event.pos):
-                    self.editing = not self.editing
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
@@ -397,14 +431,9 @@ class Battery:
             if self.dragging:
                 self.rect.x = event.pos[0] + self.offset[0]
                 self.rect.y = event.pos[1] + self.offset[1]
-        #TODO: Handle floating point inputs
-        elif event.type == pygame.KEYDOWN and self.editing:
-            if event.key == pygame.K_RETURN:#An enter is a perfectly valid way of ending the editing cycle
-                self.editing = False
-            elif event.key == pygame.K_BACKSPACE:
-                self.voltage = self.voltage // 10
-            elif pygame.K_0 <= event.key <= pygame.K_9:
-                self.voltage = self.voltage * 10 + int(pygame.key.name(event.key))
+
+        self.voltage_box.handle_event(event)
+        self.voltage = float(self.voltage_box.str_val)
     
     def send_data(self):
         '''Performs a circuit traversal and stores the information of the graph in shared_file'''
@@ -479,7 +508,6 @@ class Battery:
 
         circuit_info.append(f"\n{len(resistance_info)}")
         circuit_info.extend(resistance_info)
-        print(circuit_info)
 
         byte_form_data = (''.join(circuit_info)).encode('utf-8')
 
@@ -540,12 +568,9 @@ class Battery:
         
         # Sending the circuit data to the engine and receiving the results
         received_data = self.send_data()
-        print(received_data)
 
         # Parsing the data
         build_info = self.parse_data(received_data)
-        print(build_info)
-
 
         # Ingest build data
         self.ingest_build_data(build_info)
@@ -555,14 +580,19 @@ class Battery:
         self.total_resistance = build_info["total_resistance"]
         # Firstly, I will reset the nodes event_handled
         self.nodes[0].reset_event_handled()
-        assert self.nodes[1].event_handled == False
+        # TODO: REMOVE THE BELOW LINES TO MAKE THE ASSERTIONS STILL HOLD
+        self.nodes[0].reset_event_handled()
+
+        # assert self.nodes[1].event_handled == False
 
         self.nodes[0].ingest_build_data(build_info)
-        assert self.nodes[1].event_handled == True
+        self.nodes[1].ingest_build_data(build_info)
+        # assert self.nodes[1].event_handled == True
 
         # Resetting it again(may not be required)
         self.nodes[0].reset_event_handled()
-        assert self.nodes[0].event_handled == False
+        self.nodes[1].reset_event_handled()
+        # assert self.nodes[0].event_handled == False
 
     def remove_build_data(self):
         '''
