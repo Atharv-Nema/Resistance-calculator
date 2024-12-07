@@ -199,7 +199,6 @@ void Circuit :: initialize(){
     This means that equivalent[i] = min(node such that node is reachable to i using only zero resistance paths)*/
     
 
-    // OKAY THIS WHOLE EQUIVALENT BUISNESS IS EXTREMELY SHADY. NEED TO FIX THIS ASAP
     vector<int> equivalent;
     vector<bool> checkRequired;//Stores if there is a need to search the rest of the array for equivalents.
     
@@ -290,7 +289,6 @@ void Circuit :: initialize(){
             connectedMatrix[i][ele.second] = true; // So i and ele.second are connected
             if(ele.first == 0){
                 ct++;
-                //current_matrix[i][ele.second] = -2; //I dont think this is needed
             }
             else{
                 currentMatrix[i][ele.second] = (nodeValues[i] - nodeValues[ele.second])/(ele.first);//Current outwards is positive
@@ -327,7 +325,7 @@ void Circuit :: initialize(){
                 }
                 else{
                     currentMatrix[i][unknown_neighbour] = -outward_current;//Kirchoffs law
-                    currentMatrix[unknown_neighbour][i] = outward_current; //Current going in == current going out???
+                    currentMatrix[unknown_neighbour][i] = outward_current; //Current going in == current going out
                     modified = true;//As we have clearly modified
                     unknown_ct[i]--;
                     unknown_ct[unknown_neighbour]--;//As now we have one less unknown

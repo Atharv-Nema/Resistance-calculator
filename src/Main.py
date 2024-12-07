@@ -19,7 +19,8 @@ class Wire:
     def is_temporary(self):
         '''Returns whether the wire is temporary'''
         return self.is_temporary
-    
+
+
     def get_resistance(self):
         return 0
     
@@ -28,6 +29,8 @@ class Wire:
         # start_node is associated with self.start_pos
         # end_node is associated with self.end_pos
         self.start_node: Node = start_node
+        # assert self.start_pos == (start_node.x, start_node.y)
+        # assert self.end_pos == (end_node.x, end_node.y)
         self.end_node: Node = end_node
         self.is_temporary = False
         self.color = (0,0,0)
@@ -99,8 +102,57 @@ class Wire:
                     return True
         return False
     
+    def draw_current(self, surface):
+        # Drawing the current arrow and label
+        if self.current is None:
+            return
+        
+        arrow_color = (255, 0, 0)  # Red color for the arrow
+        arrow_width = 3            # Width of the arrow line
+        arrow_length = 20          # Length of the arrowhead lines
+
+        # Determine direction based on the sign of the current
+        if self.current < 0:
+            start_pos = self.end_pos
+            end_pos = self.start_pos
+        else:
+            start_pos = self.start_pos
+            end_pos = self.end_pos
+
+        # Draw the main line of the arrow
+        pygame.draw.line(surface, arrow_color, self.start_pos, self.end_pos, arrow_width)
+
+        # Calculate the midpoint of the line
+        midpoint = ((start_pos[0] + end_pos[0]) // 2, (start_pos[1] + end_pos[1]) // 2)
+
+        # Calculate arrowhead direction
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        length = math.sqrt(dx**2 + dy**2)
+
+        if length != 0:
+            unit_dx = dx / length
+            unit_dy = dy / length
+
+            # Points for the arrowhead lines at the midpoint
+            arrow_point1 = (midpoint[0] - unit_dx * arrow_length + unit_dy * arrow_length,
+                            midpoint[1] - unit_dy * arrow_length - unit_dx * arrow_length)
+            arrow_point2 = (midpoint[0] - unit_dx * arrow_length - unit_dy * arrow_length,
+                            midpoint[1] - unit_dy * arrow_length + unit_dx * arrow_length)
+
+            # Draw the arrowhead at the midpoint
+            pygame.draw.line(surface, arrow_color, midpoint, arrow_point1, arrow_width)
+            pygame.draw.line(surface, arrow_color, midpoint, arrow_point2, arrow_width)
+
+        # Draw the current value below the arrow
+        font = pygame.font.Font(None, 24)
+        current_text = font.render(f"{abs(self.current):.2f} A", True, (0, 255, 0))
+        text_pos = (midpoint[0], midpoint[1] + 20)
+        surface.blit(current_text, current_text.get_rect(center=text_pos))
+            
     def draw(self, surface):
         pygame.draw.line(surface, self.color, self.start_pos, self.end_pos, 8)
+        self.draw_current(surface)
         if self.selected:
             pygame.draw.line(surface, (255, 255, 0), self.start_pos, self.end_pos, 16)
 
@@ -119,7 +171,7 @@ class Node:
         self.y = y
         self.radius = 5
         self.color = (255, 0, 0)  # Red color by default
-        self.wires: list[tuple[Wire, Node]] = []#Precondition: If temporary wire exists, it is the last wire.
+        self.wires: list[tuple[Wire, Node]] = [] #Precondition: If temporary wire exists, it is the last wire.
         self.selected = False
         self.number = Node.total_nodes
         self.event_handled = False
@@ -196,7 +248,7 @@ class Node:
                         #It is your responsibility to transfer the info to the node that it not need to be selected anymore
                         self.wires.append((Node.temporary_wire, Node.selected_node)) 
 
-                        Node.temporary_wire.make_permanent(self, Node.selected_node)
+                        Node.temporary_wire.make_permanent(Node.selected_node, self)
 
                         #Updating the other nodes values
                         #Node.selected_node.wires.pop() #It is self's wire now
@@ -310,7 +362,6 @@ class TextBox:
                     self.str_val = ''
                 self.str_val += pygame.key.name(event.key)
 
-        pass
 
     def draw(self, font_size, center, surface):
         font = pygame.font.Font(None, font_size)
@@ -385,6 +436,9 @@ class Resistor(Wire):#A wrapper class
             surface
         )
 
+        # Possible drawing of the current
+        self.wire.draw_current(surface)
+
 class Battery:
     def __init__(self, x, y, image_path):
         self.image = pygame.image.load(image_path)
@@ -419,7 +473,7 @@ class Battery:
             i.reset_event_handled()
         
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left mouse button
+            if event.button == 1: # Left mouse button
                 if self.rect.collidepoint(event.pos):
                     self.dragging = True
                     self.offset = (self.rect.x - event.pos[0], self.rect.y - event.pos[1])
@@ -580,19 +634,14 @@ class Battery:
         self.total_resistance = build_info["total_resistance"]
         # Firstly, I will reset the nodes event_handled
         self.nodes[0].reset_event_handled()
-        # TODO: REMOVE THE BELOW LINES TO MAKE THE ASSERTIONS STILL HOLD
         self.nodes[0].reset_event_handled()
-
-        # assert self.nodes[1].event_handled == False
 
         self.nodes[0].ingest_build_data(build_info)
         self.nodes[1].ingest_build_data(build_info)
-        # assert self.nodes[1].event_handled == True
 
         # Resetting it again(may not be required)
         self.nodes[0].reset_event_handled()
         self.nodes[1].reset_event_handled()
-        # assert self.nodes[0].event_handled == False
 
     def remove_build_data(self):
         '''
