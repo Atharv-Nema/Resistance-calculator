@@ -55,7 +55,7 @@ The algorithm calculates the properties of a circuit with \( n \) unknown nodes 
    Create \( n + 1 \) equations based on **Kirchhoff's laws** on each of the unknown nodes + the node with voltage V incorporating I.
 
 3. **Solve the System**:  
-   Use linear algebra techniques to solve the system of \( n \) equations for the node voltages \( a_i \).
+   Use linear algebra techniques to solve the system of \( n \) equations for the node voltages \( a_j \).
 
 4. **Handle Zero Resistances**:  
    - Zero-resistance wires are treated as **real zeros**, not approximations.
