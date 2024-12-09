@@ -560,7 +560,7 @@ class Battery:
         # Now, calling the Interface subprocess
         # For now, I will always compile by default. In future steps, I would want to compile only if not compiled
         result = subprocess.run(
-            [f"./Interface.out"],
+            [f"./build/Interface.out"],
             input = byte_form_data,
             capture_output = True,
             shell = True,

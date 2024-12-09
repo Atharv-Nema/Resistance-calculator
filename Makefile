@@ -1,8 +1,8 @@
-Interface.out: src/Interface.cpp src/Math.cpp
-	g++ src/Interface.cpp -o Interface.out
+build/Interface.out: src/Interface.cpp src/Math.cpp
+	g++ src/Interface.cpp -o build/Interface.out
 
-run: Interface.out
+run: build/Interface.out
 	python3 src/Main.py
 
 clean:
-	rm Interface.out
+	rm build/Interface.out
