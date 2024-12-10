@@ -311,6 +311,7 @@ class Node:
                 neighbour.remove_build_data()
 
 class TextBox:
+    '''Class that represents the textbox'''
     other_selected = None # Represents any other text box that may be selected
     def __init__(self, value, suffix):
         self.text_rect = pygame.Rect(0, 0, 0, 0) # Initialize the rect
@@ -680,20 +681,18 @@ modify_button = Button(1400, 500, 'rsc/modify_button.png', BUTTON_DIMENSIONS)
 reset_button = Button(1400, 650, 'rsc/reset_button.png', BUTTON_DIMENSIONS)
 build_button = Button(1410, 800, 'rsc/build_button.png', BUTTON_DIMENSIONS)
 
-
-# Initialize Pygame
+# Initializing pygame
 pygame.init()
 
-# Set up display
 width, height = 1600, 1000
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Circuit Builder")
 
-# Set up game loop variables
+# Set up loop variables
 clock = pygame.time.Clock()
 running = True
 
-# Game loop
+# UI loop
 while running:
     # Circuit event handling
     for event in pygame.event.get():
