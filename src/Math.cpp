@@ -10,11 +10,10 @@ class Circuit{
         So we have n unknown nodes(graph.size() - 2) and 2 known nodes
         we have n + 1 equations(we wont use the equation from the 0 node as it is redundant)*/
         vector<vector<pair<double, int>> > circuitGraph;
-        vector<vector<pair<double, int>> > currentOfEdges;
         vector<double> nodeValues; // Voltages at the nodes
         double voltage;
         double netResistance;
-        double current;//It is the senders responsibility that the current is used in a responsible manner.
+        double current;
         vector<vector<double>> currentMatrix;
         vector<vector<bool>> connectedMatrix;//Checks if two nodes are connected
         void initialize();
@@ -242,16 +241,16 @@ void Circuit :: initialize(){
         }
         else{
             if(equivalent[node] == 0){
-                // This means that node = voltage(remember that node represents the voltage of the node)
+                // This means that V[node] = voltage(remember that node represents the voltage of the node)
                 M(node,node) = 1;
                 C(node,0) = voltage;
             }
             else if(equivalent[node] == circuitGraph.size() - 1){
-                // node = 0
+                // V[node] = 0
                 M(node,node) = 1;
             }
             else{
-                // node = equivalent[node]
+                // V[node] = V[equivalent[node]]
                 M(node,node) = 1;
                 M(node,equivalent[node]) = -1;//Equality condition
             }
@@ -332,15 +331,6 @@ void Circuit :: initialize(){
                     unknown_ct[i]--;
                     unknown_ct[unknown_neighbour]--;//As now we have one less unknown
                 }
-            }
-        }
-    }
-    //Voila! we are done with the core bit. Now just a bit of floating point error cleanup is required
-    for(int i = 0; i < circuitGraph.size(); i++){
-        for(int j = 0; j < circuitGraph[i].size(); j++){
-            auto ele = circuitGraph[i][j];
-            if(currentMatrix[i][ele.second] < 1e-8 && currentMatrix[i][ele.second] > -1e-8){
-                currentMatrix[i][ele.second] = 0.0;
             }
         }
     }
