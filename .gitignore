@@ -5,3 +5,4 @@ Trial.py
 .vscode
 graphics_trial.py
 .venv
+build/Interface.out
