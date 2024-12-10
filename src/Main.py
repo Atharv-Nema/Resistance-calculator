@@ -16,11 +16,6 @@ class Wire:
         # the created resistance here for propogation of the transformation
         self.current = None
 
-    def is_temporary(self):
-        '''Returns whether the wire is temporary'''
-        return self.is_temporary
-
-
     def get_resistance(self):
         return 0
     
@@ -29,8 +24,6 @@ class Wire:
         # start_node is associated with self.start_pos
         # end_node is associated with self.end_pos
         self.start_node: Node = start_node
-        # assert self.start_pos == (start_node.x, start_node.y)
-        # assert self.end_pos == (end_node.x, end_node.y)
         self.end_node: Node = end_node
         self.is_temporary = False
         self.color = (0,0,0)
@@ -52,13 +45,14 @@ class Wire:
 
         #Event handling
         mouse_pos = pygame.mouse.get_pos()
-        THRESHOLD = 5 # 
+        THRESHOLD = 5
         EPS = 0.05
         length = ((self.end_pos[1] - self.start_pos[1]) ** 2 + (self.end_pos[0] - self.start_pos[0]) ** 2) ** 0.5
         if event != None and event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
             #Checking if click is on the line
             if(length == 0):
-                distance_to_line = THRESHOLD + 1 # Do not perform a click as the wire has just been created
+                # Do not perform a click as this event is probably to deactivate the wire spawn
+                distance_to_line = THRESHOLD + 1 
             else:
                 new_end_pos = (self.end_pos[0] + EPS * (self.start_pos[0] - self.end_pos[0]), self.end_pos[1] + EPS * (self.start_pos[1] - self.end_pos[1]))
                 new_start_pos = (self.start_pos[0] + EPS * (self.end_pos[0] - self.start_pos[0]), self.start_pos[1] + EPS * (self.end_pos[1] - self.start_pos[1]))
@@ -75,7 +69,8 @@ class Wire:
                         - new_end_pos[1] * new_start_pos[0]
                         ) / length
             
-            if distance_to_line < THRESHOLD:  # Adjust the threshold as needed
+            if distance_to_line < THRESHOLD:
+                # A click has occured
                 self.selected = not self.selected
             else:
                 self.selected = False
@@ -144,11 +139,11 @@ class Wire:
                 pygame.draw.line(surface, arrow_color, midpoint, arrow_point1, arrow_width)
                 pygame.draw.line(surface, arrow_color, midpoint, arrow_point2, arrow_width)
 
-        # Draw the current value below the arrow
-        font = pygame.font.Font(None, 24)
-        current_text = font.render(f"{abs(self.current):.2f} A", True, (0, 255, 0))
-        text_pos = (midpoint[0], midpoint[1] + 20)
-        surface.blit(current_text, current_text.get_rect(center=text_pos))
+            # Draw the current value below the arrow
+            font = pygame.font.Font(None, 24)
+            current_text = font.render(f"{abs(self.current):.2f} A", True, (0, 255, 0))
+            text_pos = (midpoint[0], midpoint[1] + 20)
+            surface.blit(current_text, current_text.get_rect(center=text_pos))
             
     def draw(self, surface):
         pygame.draw.line(surface, self.color, self.start_pos, self.end_pos, 8)
@@ -204,15 +199,11 @@ class Node:
 
 
         if self.voltage is not None:
-            # Display the voltage
-            # Prepare the font
-            font = pygame.font.Font(None, 24)  # You can adjust the size (24) as needed
+            font = pygame.font.Font(None, 24)
+            voltage_text = font.render(f"{self.voltage:.2f} V", True, (100, 100, 255))
 
-            # Render the text (voltage in blue color)
-            voltage_text = font.render(f"{self.voltage:.2f} V", True, (100, 100, 255))  # LightBlue color (RGB)
-
-            # Calculate the position (slightly above and to the right of the node)
-            text_x = self.x + self.radius + 5  # Adjust the offset as needed
+            # Calculating the position (slightly above and to the right of the node)
+            text_x = self.x + self.radius + 5
             text_y = self.y - self.radius - 10
 
             # Draw the text on the screen
@@ -288,7 +279,7 @@ class Node:
 
 
         for i in range(len(self.wires)):
-            wire,node = self.wires[i]
+            wire, node = self.wires[i]
             if node is None:
                 # node is None => last wire is temporary
                 wire.handle_event(event, displacement)
@@ -327,6 +318,7 @@ class TextBox:
         self.str_val = str(value) # String representation of value
         self.suffix = suffix
         self.editing = False
+        self.is_build = False
 
     def end_editing(self):
         assert TextBox.other_selected == self
@@ -338,6 +330,8 @@ class TextBox:
         self.editing = False
     
     def handle_event(self, event):
+        if self.is_build:
+            return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.text_rect.collidepoint(event.pos):
             if self.editing:
                 self.end_editing()
@@ -362,6 +356,12 @@ class TextBox:
                     self.str_val = ''
                 self.str_val += pygame.key.name(event.key)
 
+    def ingest_build_data(self, build_data):
+        self.is_build = True
+        self.editing = False
+
+    def remove_build_data(self):
+        self.is_build = False
 
     def draw(self, font_size, center, surface):
         font = pygame.font.Font(None, font_size)
@@ -376,7 +376,7 @@ class Resistor(Wire):#A wrapper class
     def __init__(self, wire):
         self.wire: Wire = wire
         self.resistance = 5 # Default resistance
-        self.resistance_box = TextBox(5, 'R')
+        self.resistance_box: TextBox = TextBox(5, 'R')
         self.image = pygame.image.load('rsc/resistor.png').convert_alpha()
     
     def handle_event(self, event, displacement):
@@ -398,9 +398,11 @@ class Resistor(Wire):#A wrapper class
         return False
     
     def ingest_build_data(self, build_data):
+        self.resistance_box.ingest_build_data(build_data)
         self.wire.ingest_build_data(build_data)
 
     def remove_build_data(self):
+        self.resistance_box.remove_build_data()
         self.wire.remove_build_data()
 
     
@@ -483,7 +485,6 @@ class Battery:
     
     def send_data(self):
         '''Performs a circuit traversal and stores the information of the graph in shared_file'''
-        print("Building")        
         
         # Performs an initial dfs to check whether the circuit is closed
         visited = dict()
@@ -566,9 +567,7 @@ class Battery:
             shell = True,
         )
         return result.stdout.decode()
-        # except subprocess.CalledProcessError as e:
-        #     print(f"Command failed with exit code {e.returncode}")
-        #     print(f"Error message: {e.stderr}")
+
             
     
     def parse_data(self, received_data):
@@ -626,6 +625,7 @@ class Battery:
 
     def ingest_build_data(self, build_info: dict):
         '''Modifies the internal variables based on the build data and propogates it to other parts of the circuit'''
+        self.voltage_box.ingest_build_data(build_info)
         self.total_resistance = build_info["total_resistance"]
         # Firstly, I will reset the nodes event_handled
         self.nodes[0].reset_event_handled()
@@ -644,6 +644,7 @@ class Battery:
         modification is made. To make a modification, we must remove the build data from every part
         of the circuit
         '''
+        self.voltage_box.remove_build_data()
         self.total_resistance = None
         # Firstly, I will reset the nodes event_handled
         self.nodes[0].reset_event_handled()
@@ -675,16 +676,16 @@ battery = Battery(100, 100, 'rsc/battery.png')  # x, y, image_path
 
 # Creating the buttons
 BUTTON_DIMENSIONS = (200, 200)
-modify_button = Button(1400, 650, 'rsc/modify_button.png', BUTTON_DIMENSIONS)
-reset_button = Button(1400, 800, 'rsc/reset_button.png', BUTTON_DIMENSIONS)
-build_button = Button(1410, 950, 'rsc/build_button.png', BUTTON_DIMENSIONS)
+modify_button = Button(1400, 500, 'rsc/modify_button.png', BUTTON_DIMENSIONS)
+reset_button = Button(1400, 650, 'rsc/reset_button.png', BUTTON_DIMENSIONS)
+build_button = Button(1410, 800, 'rsc/build_button.png', BUTTON_DIMENSIONS)
 
 
 # Initialize Pygame
 pygame.init()
 
 # Set up display
-width, height = 1600, 1200
+width, height = 1600, 1000
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Circuit Builder")
 

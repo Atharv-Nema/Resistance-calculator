@@ -5,4 +5,4 @@ run: build/Interface.out
 	python3 src/Main.py
 
 clean:
-	rm build/Interface.out
+	rm -rf build
