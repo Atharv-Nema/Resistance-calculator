@@ -484,7 +484,7 @@ class Battery:
         self.voltage_box.handle_event(event)
         self.voltage = float(self.voltage_box.str_val)
     
-    def send_data(self):
+    def send_data(self) -> str:
         '''Performs a circuit traversal and stores the information of the graph in shared_file'''
         
         # Performs an initial dfs to check whether the circuit is closed
@@ -509,7 +509,7 @@ class Battery:
         if not visited[1]: # self.nodes[1].number is 1
             raise ValueError("The circuit is open")
         
-        # Now we can just collect all the data and store it in the file
+        # Now we can just collect all the data
         # However, a small amount of refactoring needs to be done. Math.cpp assumes that
         # the node at 0V is n - 1. However, in my code, I have assumed it to be 1. So I will
         # just treat 1 as n - 1 and n - 1 as 1
@@ -560,7 +560,6 @@ class Battery:
         byte_form_data = (''.join(circuit_info)).encode('utf-8')
 
         # Now, calling the Interface subprocess
-        # For now, I will always compile by default. In future steps, I would want to compile only if not compiled
         result = subprocess.run(
             ["./build/Interface.out"],
             input = byte_form_data,
@@ -571,7 +570,7 @@ class Battery:
 
             
     
-    def parse_data(self, received_data):
+    def parse_data(self, received_data) -> dict:
         data_lines = received_data.split('\n')
         build_info = dict()
         # Adding total resistance information
